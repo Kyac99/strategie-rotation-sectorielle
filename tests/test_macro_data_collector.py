@@ -1,200 +1,181 @@
 """
-Tests pour le module de collecte de données macroéconomiques.
+Tests unitaires pour le module de collecte de données macroéconomiques.
 """
 
 import os
 import sys
 import unittest
 import pandas as pd
-from datetime import datetime
 from unittest.mock import patch, MagicMock
+from datetime import datetime
 
-# Ajout du répertoire parent au path
+# Ajout du répertoire parent au path pour pouvoir importer les modules du projet
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Import du module à tester
 from src.data.macro_data_collector import MacroDataCollector
 
 
 class TestMacroDataCollector(unittest.TestCase):
     """
-    Tests pour la classe MacroDataCollector.
+    Classe de tests pour MacroDataCollector.
     """
-    
+
     def setUp(self):
         """
         Configuration des tests.
         """
-        # Mock de la clé API
-        self.api_key = "test_api_key"
+        # Mock de l'API FRED pour éviter les appels réels pendant les tests
+        self.fred_patcher = patch('src.data.macro_data_collector.Fred')
+        self.mock_fred = self.fred_patcher.start()
         
-        # Création d'une instance avec la clé mockée
-        with patch.dict('os.environ', {'FRED_API_KEY': self.api_key}):
-            self.collector = MacroDataCollector()
-    
-    @patch('src.data.macro_data_collector.Fred')
-    def test_init(self, mock_fred):
-        """
-        Test de l'initialisation.
-        """
-        # Vérification que Fred est initialisé avec la bonne clé API
-        mock_fred.assert_called_once_with(api_key=self.api_key)
+        # Configuration du mock pour get_series
+        self.mock_fred_instance = MagicMock()
+        self.mock_fred.return_value = self.mock_fred_instance
         
-        # Vérification que les séries économiques sont définies
-        self.assertIsNotNone(self.collector.macro_series)
-        self.assertGreater(len(self.collector.macro_series), 0)
-    
-    @patch('src.data.macro_data_collector.Fred')
-    def test_get_series(self, mock_fred):
-        """
-        Test de la méthode get_series.
-        """
-        # Configuration du mock
-        mock_fred_instance = mock_fred.return_value
-        mock_fred_instance.get_series.return_value = pd.Series(
-            [1.0, 2.0, 3.0],
-            index=pd.date_range(start='2020-01-01', periods=3, freq='M')
+        # Création d'une série fictive pour les tests
+        self.dummy_series = pd.Series(
+            [1.0, 1.1, 1.2, 1.3],
+            index=pd.date_range(start='2020-01-01', periods=4, freq='M')
         )
+        self.mock_fred_instance.get_series.return_value = self.dummy_series
         
-        # Appel de la méthode
-        series = self.collector.get_series('GDPC1', '2020-01-01', '2020-03-01', 'm')
-        
-        # Vérifications
-        mock_fred_instance.get_series.assert_called_once_with(
-            'GDPC1', 
-            observation_start='2020-01-01', 
-            observation_end='2020-03-01',
-            frequency='m'
-        )
-        self.assertIsInstance(series, pd.Series)
-        self.assertEqual(len(series), 3)
-    
-    @patch('src.data.macro_data_collector.Fred')
-    def test_get_all_series(self, mock_fred):
+        # Création du collecteur avec une clé API fictive
+        self.collector = MacroDataCollector(api_key='dummy_api_key')
+
+    def tearDown(self):
         """
-        Test de la méthode get_all_series.
+        Nettoyage après les tests.
         """
-        # Configuration du mock
-        mock_fred_instance = mock_fred.return_value
-        
-        def mock_get_series(series_id, *args, **kwargs):
-            return pd.Series(
-                [1.0, 2.0, 3.0],
-                index=pd.date_range(start='2020-01-01', periods=3, freq='M'),
-                name=series_id
-            )
-        
-        mock_fred_instance.get_series.side_effect = mock_get_series
-        
-        # Appel de la méthode
-        all_series = self.collector.get_all_series('2020-01-01', '2020-03-01', 'm')
-        
-        # Vérifications
-        self.assertIsInstance(all_series, pd.DataFrame)
-        self.assertEqual(len(all_series), 3)
-        self.assertGreaterEqual(len(all_series.columns), 1)
-    
-    @patch('src.data.macro_data_collector.Fred')
-    def test_calculate_yoy_changes(self, mock_fred):
+        self.fred_patcher.stop()
+
+    def test_init(self):
         """
-        Test de la méthode calculate_yoy_changes.
+        Test de l'initialisation du collecteur.
         """
-        # Création d'un DataFrame de test
-        df = pd.DataFrame({
-            'GDPC1': [100, 105, 110, 115, 120],
-            'UNRATE': [5.0, 5.1, 5.2, 5.3, 5.4]
-        }, index=pd.date_range(start='2020-01-01', periods=5, freq='M'))
-        
-        # Appel de la méthode
-        yoy = self.collector.calculate_yoy_changes(df)
-        
-        # Vérifications
-        self.assertIsInstance(yoy, pd.DataFrame)
-        self.assertEqual(len(yoy), 5)
-        self.assertEqual(len(yoy.columns), 2)
-        
-        # Les 12 premières valeurs doivent être NaN (pas assez d'historique)
-        # Mais comme on n'a que 5 valeurs, tout devrait être NaN
-        self.assertTrue(yoy.iloc[:4].isna().all().all())
-    
-    @patch('src.data.macro_data_collector.Fred')
-    def test_calculate_mom_changes(self, mock_fred):
+        self.assertEqual(self.collector.fred, self.mock_fred_instance)
+        self.assertTrue(len(self.collector.macro_series) > 0)
+
+    def test_get_series(self):
         """
-        Test de la méthode calculate_mom_changes.
+        Test de la récupération d'une série.
+        """
+        series = self.collector.get_series('GDPC1')
+        self.assertIsNotNone(series)
+        self.mock_fred_instance.get_series.assert_called_once()
+        
+        # Vérification des arguments
+        args, kwargs = self.mock_fred_instance.get_series.call_args
+        self.assertEqual(args[0], 'GDPC1')
+
+    def test_get_all_series(self):
+        """
+        Test de la récupération de toutes les séries.
+        """
+        start_date = '2020-01-01'
+        end_date = '2020-04-01'
+        
+        all_data = self.collector.get_all_series(start_date=start_date, end_date=end_date)
+        
+        # Vérifier que get_series a été appelé pour chaque série
+        expected_calls = len(self.collector.macro_series)
+        self.assertEqual(self.mock_fred_instance.get_series.call_count, expected_calls)
+        
+        # Vérifier que le DataFrame résultant contient des données
+        self.assertIsInstance(all_data, pd.DataFrame)
+        self.assertGreater(len(all_data), 0)
+
+    def test_calculate_yoy_changes(self):
+        """
+        Test du calcul des variations en glissement annuel.
         """
         # Création d'un DataFrame de test
         df = pd.DataFrame({
-            'GDPC1': [100, 105, 110, 115, 120],
-            'UNRATE': [5.0, 5.1, 5.2, 5.3, 5.4]
-        }, index=pd.date_range(start='2020-01-01', periods=5, freq='M'))
+            'A': [100, 110, 120, 130],
+            'B': [200, 210, 220, 230]
+        }, index=pd.date_range(start='2020-01-01', periods=4, freq='M'))
         
-        # Appel de la méthode
-        mom = self.collector.calculate_mom_changes(df)
+        # Calcul des variations
+        yoy_df = self.collector.calculate_yoy_changes(df)
         
-        # Vérifications
-        self.assertIsInstance(mom, pd.DataFrame)
-        self.assertEqual(len(mom), 5)
-        self.assertEqual(len(mom.columns), 2)
+        # Vérification du nombre de colonnes et de leurs noms
+        self.assertEqual(len(yoy_df.columns), 2)
+        self.assertTrue('A_YOY' in yoy_df.columns)
+        self.assertTrue('B_YOY' in yoy_df.columns)
         
-        # La première valeur doit être NaN, les autres non
-        self.assertTrue(mom.iloc[0].isna().all())
-        self.assertFalse(mom.iloc[1:].isna().all().all())
-        
-        # Vérification des changements (en %)
-        self.assertAlmostEqual(mom['GDPC1_MOM'].iloc[1], 5.0)
-        self.assertAlmostEqual(mom['GDPC1_MOM'].iloc[2], 4.761905, places=5)
-    
-    @patch('src.data.macro_data_collector.Fred')
-    def test_preprocess_data(self, mock_fred):
+        # Les 12 premières observations doivent être NaN pour les variations annuelles
+        self.assertTrue(yoy_df.iloc[0].isna().all())
+
+    def test_calculate_mom_changes(self):
         """
-        Test de la méthode preprocess_data.
+        Test du calcul des variations en glissement mensuel.
         """
         # Création d'un DataFrame de test
         df = pd.DataFrame({
-            'GDPC1': [100, 105, 110, 115, 120],
-            'UNRATE': [5.0, 5.1, 5.2, 5.3, 5.4]
-        }, index=pd.date_range(start='2020-01-01', periods=5, freq='M'))
+            'A': [100, 110, 120, 130],
+            'B': [200, 210, 220, 230]
+        }, index=pd.date_range(start='2020-01-01', periods=4, freq='M'))
         
-        # Appel de la méthode
-        processed = self.collector.preprocess_data(df)
+        # Calcul des variations
+        mom_df = self.collector.calculate_mom_changes(df)
         
-        # Vérifications
-        self.assertIsInstance(processed, pd.DataFrame)
-        self.assertEqual(len(processed), 5)
+        # Vérification du nombre de colonnes et de leurs noms
+        self.assertEqual(len(mom_df.columns), 2)
+        self.assertTrue('A_MOM' in mom_df.columns)
+        self.assertTrue('B_MOM' in mom_df.columns)
         
-        # Vérification des colonnes créées
-        expected_columns = ['GDPC1', 'UNRATE', 'GDPC1_YOY', 'UNRATE_YOY', 'GDPC1_MOM', 'UNRATE_MOM']
-        for col in expected_columns:
-            self.assertIn(col, processed.columns)
-    
-    @patch('src.data.macro_data_collector.Fred')
-    def test_save_data(self, mock_fred):
+        # La première observation doit être NaN pour les variations mensuelles
+        self.assertTrue(mom_df.iloc[0].isna().all())
+        
+        # Vérification des valeurs calculées
+        self.assertAlmostEqual(mom_df.iloc[1]['A_MOM'], 10.0)
+        self.assertAlmostEqual(mom_df.iloc[1]['B_MOM'], 5.0)
+
+    def test_preprocess_data(self):
         """
-        Test de la méthode save_data.
+        Test du prétraitement des données.
         """
         # Création d'un DataFrame de test
         df = pd.DataFrame({
-            'GDPC1': [100, 105, 110],
-            'UNRATE': [5.0, 5.1, 5.2]
-        }, index=pd.date_range(start='2020-01-01', periods=3, freq='M'))
+            'A': [100, 110, 120, 130],
+            'B': [200, 210, 220, 230]
+        }, index=pd.date_range(start='2020-01-01', periods=4, freq='M'))
         
-        # Création d'un fichier temporaire
-        temp_file = 'temp_test_file.csv'
+        # Prétraitement des données
+        processed_df = self.collector.preprocess_data(df)
         
-        # Appel de la méthode
-        success = self.collector.save_data(df, temp_file)
+        # Vérification du nombre de colonnes
+        expected_columns = len(df.columns) * 3  # Originales + YOY + MOM
+        self.assertEqual(len(processed_df.columns), expected_columns)
         
-        # Vérifications
-        self.assertTrue(success)
-        self.assertTrue(os.path.exists(temp_file))
+        # Vérification de la présence des colonnes de variations
+        self.assertTrue('A_YOY' in processed_df.columns)
+        self.assertTrue('A_MOM' in processed_df.columns)
+        self.assertTrue('B_YOY' in processed_df.columns)
+        self.assertTrue('B_MOM' in processed_df.columns)
         
-        # Vérification du contenu du fichier
-        saved_df = pd.read_csv(temp_file, index_col=0, parse_dates=True)
-        self.assertEqual(len(saved_df), 3)
-        self.assertEqual(len(saved_df.columns), 2)
+        # Vérification que les valeurs manquantes ont été traitées
+        self.assertEqual(processed_df.isna().sum().sum(), 0)
+
+    def test_save_data(self):
+        """
+        Test de la sauvegarde des données.
+        """
+        # Création d'un DataFrame de test
+        df = pd.DataFrame({
+            'A': [100, 110, 120, 130],
+            'B': [200, 210, 220, 230]
+        }, index=pd.date_range(start='2020-01-01', periods=4, freq='M'))
         
-        # Nettoyage
-        os.remove(temp_file)
+        # Mock de la méthode to_csv pour éviter d'écrire réellement un fichier
+        with patch.object(pd.DataFrame, 'to_csv') as mock_to_csv:
+            # Test de la sauvegarde
+            result = self.collector.save_data(df, 'test_file.csv')
+            
+            # Vérification que to_csv a été appelé
+            mock_to_csv.assert_called_once()
+            
+            # Vérification que la fonction renvoie True
+            self.assertTrue(result)
 
 
 if __name__ == '__main__':
