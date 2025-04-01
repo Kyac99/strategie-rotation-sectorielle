@@ -1,38 +1,143 @@
-# Configuration générale du projet
+# Configuration du projet de stratégie de rotation sectorielle
 
-project:
-  name: "Stratégie de Rotation Sectorielle Dynamique"
-  version: "0.1.0"
-  description: "Stratégie d'allocation d'actifs basée sur les cycles économiques et le momentum sectoriel"
-
+# Configuration des chemins de données
 paths:
   data_raw: "data/raw"
   data_processed: "data/processed"
-  data_external: "data/external"
   models: "models"
+  results: "results"
+  notebooks: "notebooks"
   reports: "reports"
 
-logging:
-  level: "INFO"
-  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-  file: "logs/app.log"
+# Configuration des sources de données
+data_sources:
+  fred:
+    api_key: ""  # À remplacer par votre clé API FRED
+    series:
+      # Indicateurs de croissance
+      gdp: "GDPC1"             # PIB réel
+      industrial: "INDPRO"     # Production industrielle
+      employment: "PAYEMS"     # Emploi non-agricole
+      unemployment: "UNRATE"   # Taux de chômage
+      
+      # Indicateurs d'inflation
+      cpi: "CPIAUCSL"          # Indice des prix à la consommation
+      pce: "PCEPI"             # Indice des prix des dépenses personnelles de consommation
+      ppi: "PPIFIS"            # Indice des prix à la production
+      
+      # Indicateurs de politique monétaire
+      fed_funds: "FEDFUNDS"    # Taux des fonds fédéraux
+      effective_rate: "DFF"    # Taux effectif des fonds fédéraux
+      yield_spread: "T10Y2Y"   # Spread de taux 10 ans - 2 ans
+      inflation_exp: "T10YIE"  # Anticipations d'inflation à 10 ans
+      
+      # Indicateurs de confiance
+      consumer_sentiment: "UMCSENT"      # Indice de confiance des consommateurs (Université du Michigan)
+      consumer_confidence: "CSCICP03USM665S"  # Indice de confiance des consommateurs OCDE
+      
+      # Indicateurs de marché
+      vix: "VIXCLS"            # Indice de volatilité VIX
+      credit_spread: "BAMLH0A0HYM2"     # Spread de crédit obligations à haut rendement
+      dollar_index: "DTWEXBGS"          # Indice du dollar américain
 
-performance_metrics:
-  - "annualized_return"
-  - "annualized_volatility"
-  - "sharpe_ratio"
-  - "max_drawdown"
-  - "calmar_ratio"
-  - "sortino_ratio"
-  - "information_ratio"
-  - "win_rate"
+  yfinance:
+    sectors:
+      # ETFs sectoriels
+      consumer_discretionary: "XLY"  # Consommation discrétionnaire
+      consumer_staples: "XLP"        # Consommation de base
+      energy: "XLE"                  # Énergie
+      financials: "XLF"              # Finance
+      health_care: "XLV"             # Santé
+      industrials: "XLI"             # Industrie
+      materials: "XLB"               # Matériaux
+      technology: "XLK"              # Technologie
+      utilities: "XLU"               # Services publics
+      real_estate: "XLRE"            # Immobilier
+      communication: "XLC"           # Services de communication
+    
+    market:
+      # ETFs de référence pour le marché
+      sp500: "SPY"              # S&P 500
+      nasdaq: "QQQ"             # NASDAQ-100
+      russell2000: "IWM"        # Russell 2000
+      europe: "VGK"             # Europe
+      japan: "EWJ"              # Japon
+      china: "MCHI"             # Chine
+      emerging: "EEM"           # Marchés émergents
+    
+    styles:
+      # ETFs de style d'investissement
+      large_growth: "IVW"       # Croissance grandes capitalisations
+      large_value: "IVE"        # Valeur grandes capitalisations
+      mid_growth: "IJK"         # Croissance moyennes capitalisations
+      mid_value: "IJJ"          # Valeur moyennes capitalisations
+      small_growth: "IWO"       # Croissance petites capitalisations
+      small_value: "IWN"        # Valeur petites capitalisations
+    
+    bonds_commodities:
+      # ETFs obligataires et de matières premières
+      long_term_bonds: "TLT"    # Obligations long terme
+      mid_term_bonds: "IEF"     # Obligations moyen terme
+      short_term_bonds: "SHY"   # Obligations court terme
+      corporate_bonds: "LQD"    # Obligations d'entreprise investment grade
+      high_yield_bonds: "HYG"   # Obligations d'entreprise high yield
+      gold: "GLD"               # Or
+      silver: "SLV"             # Argent
+      oil: "USO"                # Pétrole
+      commodities: "DBC"        # Matières premières diversifiées
 
+# Configuration des paramètres de modèle
+models:
+  economic_cycle:
+    n_clusters: 5               # Nombre de clusters pour l'identification des cycles
+    supervised: false           # Utiliser un modèle supervisé (true) ou non supervisé (false)
+    feature_importance: true    # Calculer l'importance des features
+    key_indicators:             # Indicateurs clés pour l'identification des cycles
+      - "GDPC1_YOY"             # Croissance du PIB (annuelle)
+      - "INDPRO_YOY"            # Croissance de la production industrielle (annuelle)
+      - "UNRATE"                # Taux de chômage
+      - "UNRATE_YOY"            # Variation du taux de chômage (annuelle)
+      - "CPIAUCSL_YOY"          # Inflation (annuelle)
+      - "FEDFUNDS"              # Taux d'intérêt directeur
+      - "T10Y2Y"                # Spread de taux 10 ans - 2 ans
+      - "BAMLH0A0HYM2"          # Spread de crédit à haut rendement
+      - "UMCSENT"               # Confiance des consommateurs
+      - "VIXCLS"                # Volatilité du marché
+  
+  sector_selection:
+    num_sectors: 3              # Nombre de secteurs à sélectionner
+    momentum_weight: 0.5        # Poids du momentum dans la sélection (0-1)
+    momentum_periods:           # Pondération des différentes périodes de momentum
+      1_month: 0.2
+      3_months: 0.3
+      6_months: 0.3
+      12_months: 0.2
+
+# Configuration du backtesting
+backtest:
+  start_date: "2000-01-01"      # Date de début du backtest
+  end_date: "2023-12-31"        # Date de fin du backtest
+  initial_capital: 10000        # Capital initial
+  rebalance_frequency: "M"      # Fréquence de rééquilibrage (D, W, M, Q, A)
+  transaction_cost: 0.001       # Coût de transaction par transaction (0.1%)
+  risk_free_rate: 0.02          # Taux sans risque annualisé (2%)
+  benchmark: "SPY"              # Ticker du benchmark
+
+# Configuration de la visualisation
 visualization:
-  theme: "plotly_white"
-  colors:
-    primary: "#1f77b4"
-    secondary: "#ff7f0e"
-    accent: "#2ca02c"
-    benchmark: "#d62728"
-    grid: "#cccccc"
-  default_figsize: [12, 8]
+  style: "seaborn"             # Style des graphiques matplotlib
+  theme: "light"               # Thème (light ou dark)
+  format: "png"                # Format des graphiques (png, pdf, svg, html)
+  dpi: 300                     # Résolution des images
+  interactive: true            # Utiliser des graphiques interactifs (plotly)
+
+# Configuration de l'application
+app:
+  port: 8501                   # Port de l'application Streamlit
+  title: "Stratégie de Rotation Sectorielle Dynamique"
+  subtitle: "Optimisation d'allocation d'actifs basée sur les cycles économiques et le momentum"
+  theme:
+    primary_color: "#1E88E5"   # Couleur principale
+    background_color: "#FFFFFF" # Couleur de fond
+    text_color: "#333333"       # Couleur du texte
+    font: "sans-serif"          # Police de caractères
