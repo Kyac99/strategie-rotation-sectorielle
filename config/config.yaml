@@ -1,0 +1,38 @@
+# Configuration générale du projet
+
+project:
+  name: "Stratégie de Rotation Sectorielle Dynamique"
+  version: "0.1.0"
+  description: "Stratégie d'allocation d'actifs basée sur les cycles économiques et le momentum sectoriel"
+
+paths:
+  data_raw: "data/raw"
+  data_processed: "data/processed"
+  data_external: "data/external"
+  models: "models"
+  reports: "reports"
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/app.log"
+
+performance_metrics:
+  - "annualized_return"
+  - "annualized_volatility"
+  - "sharpe_ratio"
+  - "max_drawdown"
+  - "calmar_ratio"
+  - "sortino_ratio"
+  - "information_ratio"
+  - "win_rate"
+
+visualization:
+  theme: "plotly_white"
+  colors:
+    primary: "#1f77b4"
+    secondary: "#ff7f0e"
+    accent: "#2ca02c"
+    benchmark: "#d62728"
+    grid: "#cccccc"
+  default_figsize: [12, 8]

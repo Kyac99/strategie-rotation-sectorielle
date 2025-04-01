@@ -1,0 +1,51 @@
+# Paramètres pour le backtesting
+
+# Période de backtest
+backtest_period:
+  start_date: "2000-01-01"
+  end_date: "2023-12-31"
+
+# Paramètres de la stratégie
+strategy_params:
+  # Périodicité de rebalancement
+  rebalancing_frequency: "monthly"
+  
+  # Nombre de secteurs à sélectionner
+  num_sectors: 3
+  
+  # Pondération des secteurs
+  weighting_scheme: "equal"
+  # Options: equal, momentum_weighted, volatility_weighted
+  
+  # Période de calcul du momentum
+  momentum_lookback:
+    short_term: 3  # mois
+    medium_term: 6  # mois
+    long_term: 12  # mois
+  
+  # Seuil de détection des changements de cycle
+  cycle_detection_threshold: 0.8
+  
+  # Délai de confirmation avant changement de régime
+  confirmation_delay: 2  # mois
+
+# Benchmark à utiliser pour les comparaisons
+benchmarks:
+  - symbol: "SPY"  # S&P 500 ETF
+    name: "S&P 500"
+  - symbol: "EFA"  # MSCI EAFE (Europe, Australasie, Extrême-Orient)
+    name: "MSCI EAFE"
+  - symbol: "AGG"  # Bloomberg US Aggregate Bond
+    name: "US Aggregate Bond"
+
+# Coûts de transaction et frais
+costs:
+  transaction_cost: 0.001  # 10 points de base par transaction
+  management_fee: 0.0050  # 50 points de base par an
+  tax_rate: 0.15  # Taux d'imposition des plus-values
+
+# Paramètres de simulation
+simulation_params:
+  num_simulations: 1000
+  monte_carlo_method: "bootstrap"  # Options: bootstrap, parametric
+  confidence_interval: 0.95

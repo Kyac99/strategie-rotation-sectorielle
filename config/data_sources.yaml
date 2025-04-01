@@ -1,0 +1,65 @@
+# Configuration des sources de données
+
+# Sources de données macroéconomiques
+macro_sources:
+  fred:
+    base_url: "https://api.stlouisfed.org/fred/"
+    api_key_env: "FRED_API_KEY"
+    indicators:
+      gdp: "GDP"  # PIB
+      unemployment: "UNRATE"  # Taux de chômage
+      inflation: "CPIAUCSL"  # Indice des prix à la consommation
+      interest_rate: "DFF"  # Taux des fonds fédéraux
+      industrial_production: "INDPRO"  # Production industrielle
+      retail_sales: "RSAFS"  # Ventes au détail
+      consumer_confidence: "UMCSENT"  # Indice de confiance des consommateurs
+      housing_starts: "HOUST"  # Mises en chantier
+      yield_curve: 
+        - "DGS2"  # Rendement des bons du Trésor à 2 ans
+        - "DGS10"  # Rendement des bons du Trésor à 10 ans
+  world_bank:
+    base_url: "https://api.worldbank.org/v2/"
+    indicators:
+      global_gdp: "NY.GDP.MKTP.CD"  # PIB mondial
+
+# Sources de données sectorielles
+sector_sources:
+  etfs:
+    provider: "yfinance"
+    symbols:
+      xlb: "XLB"  # Matériaux
+      xlc: "XLC"  # Services de communication
+      xle: "XLE"  # Énergie
+      xlf: "XLF"  # Finance
+      xli: "XLI"  # Industrie
+      xlk: "XLK"  # Technologie
+      xlp: "XLP"  # Consommation de base
+      xlre: "XLRE"  # Immobilier
+      xlu: "XLU"  # Services publics
+      xlv: "XLV"  # Santé
+      xly: "XLY"  # Consommation discrétionnaire
+  indices:
+    provider: "yfinance"
+    symbols:
+      sp500: "^GSPC"  # S&P 500
+      nasdaq: "^IXIC"  # NASDAQ
+      dow: "^DJI"  # Dow Jones
+      russell2000: "^RUT"  # Russell 2000
+
+# Sources de données de marché
+market_sources:
+  volatility:
+    provider: "yfinance"
+    symbols:
+      vix: "^VIX"  # Indice de volatilité
+  credit_spreads:
+    provider: "fred"
+    indicators:
+      baa_10y: "BAA10Y"  # Écart entre obligations d'entreprise Baa et rendements du Trésor à 10 ans
+      aaa_10y: "AAA10Y"  # Écart entre obligations d'entreprise Aaa et rendements du Trésor à 10 ans
+
+# Périodicité des données
+frequencies:
+  macro: "monthly"
+  market: "daily"
+  rebalancing: "monthly"
